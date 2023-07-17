@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "array": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "system_error": "cpp",
+        "functional": "cpp",
+        "random": "cpp",
+        "compare": "cpp"
+    }
+}
