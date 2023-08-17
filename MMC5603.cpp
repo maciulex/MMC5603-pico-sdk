@@ -27,9 +27,9 @@ namespace MMC5603
         uint8_t rawDataY[3];
         uint8_t rawDataZ[3];
 
-        uint16_t data16bitX;
-        uint16_t data16bitY;
-        uint16_t data16bitZ;
+        int32_t data32bitX;
+        int32_t data32bitY;
+        int32_t data32bitZ;
 
         bool axisX_active = true;
         bool axisY_active = true;
@@ -68,9 +68,9 @@ namespace MMC5603
     } REGISTERS;
 
     //INTERNAL CONTORL 0
-    enum TAKE_MEASURMENT                {TAKE_MAGNETIC           = 0b0000'0001, TAKE_TEMPERATURE   = 0b0000'0010, TAKE_TEMP_MAGN             = 0b0000'0011, TAKE_NONE  = 0b0000'0000};
-    enum SET_RESET                      {DO_RESET                = 0b0001'0000, DO_SET             = 0b0000'1000, DO_SET_RESET               = 0b0001'1000, DO_NOTHING = 0b0000'0000};
-    enum AUTO_SR_SELF_TEST              {SET_PERIODIC_MEASURMENT = 0b0010'0000, SET_AUTO_SELF_TEST = 0b0100'0000, SET_PERIODIC_AND_AUTO_TEST = 0b0110'0000};
+    enum TAKE_MEASURMENT                {TAKE_MAGNETIC           = 0b0000'0001, TAKE_TEMPERATURE   = 0b0000'0010, TAKE_TEMP_MAGN             = 0b0000'0011, TAKE_NONE   = 0b0000'0000};
+    enum SET_RESET                      {DO_RESET                = 0b0001'0000, DO_SET             = 0b0000'1000, DO_SET_RESET               = 0b0001'1000, DO_NOTHING  = 0b0000'0000};
+    enum AUTO_SR_SELF_TEST              {SET_PERIODIC_MEASURMENT = 0b0010'0000, SET_AUTO_SELF_TEST = 0b0100'0000, SET_PERIODIC_AND_AUTO_TEST = 0b0110'0000, SET_NOTHING= 0b0000'0000};
     //Writing a 1 into this location will start the calculation of the measurement period according to the ODR. This bit should be set before continuous-mode measurements are started. This bit is selfcleared after the measurement period is calculated by internal circuits. 
     enum CALCULATION_OF_MEASURMENT_TIME {CALCULATE_TIME          = 0b1000'0000, DO_NOT_CALCULATE   = 0b0000'0000};
 
@@ -156,9 +156,10 @@ namespace MMC5603
 
                 SET_INTERNAL_CONTROL_2(            
                     PERIODICAL_MEASURMENTS  ::p1,
-                    ACTIVATE_PERIODICAL_MES ::ACTIVATE_PERIODICAL,
+                    ACTIVATE_PERIODICAL_MES ::DISABLE_PERIODICAL,
                     ENTER_CONTINOUS_MODE    ::ACTIVATE_CONTINOUS,
                     HIGHT_POWER_MODE        ::ACTIVATE_HI_POW);
+                printf("SET FAST MODE\n");
             break;
             case BASIC_MODES::SLOW_UPDATE:
 
@@ -219,19 +220,25 @@ namespace MMC5603
     void getX() {
         uint8_t message[3] {REGISTERS.X_OUT0, REGISTERS.X_OUT1, REGISTERS.X_OUT2};
         I2C_TALK(message, magnetometrData.rawDataX, 3);
-        magnetometrData.data16bitX = (magnetometrData.rawDataX[1] << 8) | magnetometrData.rawDataX[0];
+
+        magnetometrData.data32bitX = ((magnetometrData.rawDataX[0] << 12) | (magnetometrData.rawDataX[1] << 4) | (magnetometrData.rawDataX[2] >> 4));
+        magnetometrData.data32bitX -= (uint32_t)1 << 19;
     }
 
     void getY() {
         uint8_t message[3] {REGISTERS.Y_OUT0, REGISTERS.Y_OUT1, REGISTERS.Y_OUT2};
         I2C_TALK(message, magnetometrData.rawDataY, 3);
-        magnetometrData.data16bitY = (magnetometrData.rawDataY[1] << 8) | magnetometrData.rawDataY[0];
+
+        magnetometrData.data32bitY = ((magnetometrData.rawDataY[0] << 12) | (magnetometrData.rawDataY[1] << 4) | (magnetometrData.rawDataY[2] >> 4));
+        magnetometrData.data32bitY -= (uint32_t)1 << 19;
     }
 
     void getZ() {
         uint8_t message[3] {REGISTERS.Z_OUT0, REGISTERS.Z_OUT1, REGISTERS.Z_OUT2};
         I2C_TALK(message, magnetometrData.rawDataZ, 3);
-        magnetometrData.data16bitZ = (magnetometrData.rawDataZ[1] << 8) | magnetometrData.rawDataZ[0];
+         
+        magnetometrData.data32bitZ = ((magnetometrData.rawDataZ[0] << 12) | (magnetometrData.rawDataZ[1] << 4) | (magnetometrData.rawDataZ[2] >> 4));
+        magnetometrData.data32bitZ -= (uint32_t)1 << 19;
     }
     
     uint8_t getStatusRegister() {
@@ -306,9 +313,9 @@ namespace MMC5603
 
     void printActiveAxis() {
         printf("Axis: \n");
-        if (magnetometrData.axisX_active) printf("\tAxis x: %u\n", (unsigned int)magnetometrData.data16bitX);
-        if (magnetometrData.axisY_active) printf("\tAxis y: %u\n", (unsigned int)magnetometrData.data16bitY);
-        if (magnetometrData.axisZ_active) printf("\tAxis z: %u\n", (unsigned int)magnetometrData.data16bitZ);
+        if (magnetometrData.axisX_active) printf("\tAxis x: %f\n", ((float)magnetometrData.data32bitX * 0.00625));
+        if (magnetometrData.axisY_active) printf("\tAxis y: %f\n", ((float)magnetometrData.data32bitY * 0.00625));
+        if (magnetometrData.axisZ_active) printf("\tAxis z: %f\n", ((float)magnetometrData.data32bitZ * 0.00625));
         printf("\n");
     }
 
